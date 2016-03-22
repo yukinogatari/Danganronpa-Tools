@@ -60,10 +60,6 @@ def dr_dec(data):
   dec_size = to_u32(data[4:8])
   cmp_size = to_u32(data[8:12])
   
-  # print "Compressed size:", cmp_size
-  # print "Decompressed size:", dec_size
-  # print
-  
   if len(data) < cmp_size:
     raise Exception("Compressed data not large enough.")
 
@@ -80,70 +76,60 @@ def dr_dec(data):
     bit2 = b & 0b01000000
     bit3 = b & 0b00100000
     
+    # Copy data from the output buffer.
+    # 1xxyyyyy yyyyyyyy
+    # Count  -> x + 4
+    # Offset -> y
     if bit1:
-      
-      # print "Copy data:",
-      # print "%02X" % b,
       
       b2 = data[p]
       p += 1
-      # print "%02X" % b2,
       
       count = ((b >> 5) & 0b011) + 4
       offset = ((b & 0b00011111) << 8) + b2
       prev_off = offset
       
-      # print "|", "Count:", count, "Offset:", offset,
-      
-      # print
-      # print
-      
       for i in range(count):
         res.append(res[-offset])
     
+    # Continue copying data from the output buffer.
+    # 011xxxxx
+    # Count  -> x
+    # Offset -> reused from above
     elif bit2 and bit3:
-      
-      # print "Copy prev:",
-      # print "%02X" % b,
       
       count = (b & 0b00011111)
       offset = prev_off
       
-      # print "|", "Count:", count, "Offset:", offset,
-      # print
-      # print
-      
       for i in range(count):
         res.append(res[-offset])
     
+    # Insert multiple copies of the next byte.
+    # 0100xxxx yyyyyyyy
+    # 0101xxxx xxxxxxxx yyyyyyyy
+    # Count -> x + 4
+    # Data  -> y
     elif bit2 and not bit3:
       
-      # print "Repeat bytes:",
-      # print "%02X" % b,
       count = (b & 0b00001111)
       
       if b & 0b00010000:
         b = data[p]
         p += 1
         count = (count << 8) + b
-        # print "%02X" % b,
       
       count += 4
       
       b = data[p]
       p += 1
       
-      # print "%02X" % b,
-      # print "|", "Count:", count,
-      # print
-      # print
-      
       res += bytearray([b] * count)
     
+    # Insert raw bytes from the input stream.
+    # 000xxxxx
+    # 001xxxxx xxxxxxxx
+    # Count -> x
     elif not bit1 and not bit2:
-      
-      # print "Raw bytes:",
-      # print "%02X" % b,
       
       count = b & 0b00011111
       
@@ -151,16 +137,6 @@ def dr_dec(data):
         b = data[p]
         p += 1
         count = (count << 8) + b
-        
-        # print "%02X" % b,
-      
-      # print "|", "Count:", count,
-      # print
-      # for x in data[p : p + count]:
-        # print "%02X" % x,
-      
-      # print
-      # print
         
       res += data[p : p + count]
       p += count
@@ -173,8 +149,6 @@ def dr_dec(data):
     print
     print dec_size, len(res)
     print
-  # print "-" * 80
-  # print
   
   return res
 
@@ -228,7 +202,6 @@ if __name__ == "__main__":
         if dr_dec_file(filename, out_file):
           print filename
           print " -->", out_file
-          # print
       
       except:
         print "Failed to decompress", filename

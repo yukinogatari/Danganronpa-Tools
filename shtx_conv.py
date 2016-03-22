@@ -140,11 +140,9 @@ if __name__ == "__main__":
         if convert_shtx_file(filename, out_file):
           print filename
           print " -->", out_file
-          # print
       
       except:
         print "Failed to convert", filename
-        # raise
   
   print
   raw_input("Press Enter to exit.")
