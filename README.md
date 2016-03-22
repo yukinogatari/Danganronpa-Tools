@@ -34,8 +34,7 @@ Directories are traversed recursively to look for files to convert.
 
 #### dr_dec.py
 
-Decompresses the compressed data used in the Danganronpa PS Vita games.
-(Header: `FC AA 55 A7`)
+Decompresses the compressed data used in the Danganronpa PS Vita games. (Header: `FC AA 55 A7`)
 
 #### Usage
 
@@ -49,6 +48,8 @@ If no output directory is provided (such as in a drag/drop), a "dec" directory
 is created beside the input, and decompressed data is placed there.
 
 Directories are traversed recursively to look for files to decompress.
+
+Uncompressed GXT files can be converted to PNG using [GXTConvert](https://github.com/xdanieldzd/GXTConvert).
 
 ## Thanks
 
