@@ -13,7 +13,7 @@ It *should* do its job, though.
 
 ## Scripts
 
-### shtx_conv.py
+#### shtx_conv.py
 
 Converts SHTX and SHTXFS-formatted image files to PNG.
 
@@ -30,7 +30,9 @@ converted in place.
 
 Directories are traversed recursively to look for files to convert.
 
-### dr_dec.py
+--------------------------------------------------------------------------------
+
+#### dr_dec.py
 
 Decompresses the compressed data used in the Danganronpa PS Vita games.
 (Header: `FC AA 55 A7`)
