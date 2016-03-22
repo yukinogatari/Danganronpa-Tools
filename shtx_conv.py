@@ -95,7 +95,7 @@ def convert_shtx_4bit(data):
   
   for b in pixels:
     pixels2.append(b & 0x0F)
-    pixels2.append((b >> 4))
+    pixels2.append(b >> 4)
   
   img = QImage(pixels2, width, height, QImage.Format_Indexed8)
   img.setColorTable(palette)
