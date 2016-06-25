@@ -70,10 +70,20 @@ def convert_shtx_8bit(data):
     palette.append(qRgba(data[p], data[p + 1], data[p + 2], data[p + 3]))
     p += 4
   
-  pixels = data[p : p + (width * height)]
+  # For some reason, a couple images have blank palettes and are actually RGBA images.
+  if not palette == [0L] * 256:
   
-  img = QImage(pixels, width, height, QImage.Format_Indexed8)
-  img.setColorTable(palette)
+    pixels = data[p : p + (width * height)]
+    
+    img = QImage(pixels, width, height, QImage.Format_Indexed8)
+    img.setColorTable(palette)
+  
+  else:
+    
+    pixels = data[p:]
+    height = len(pixels) / width / 4
+    
+    img = QImage(pixels, width, height, QImage.Format_ARGB32)
   
   return img
 
@@ -133,13 +143,14 @@ if __name__ == "__main__":
       out_dir = base_dir
   
     for filename in files:
-      out_file = os.path.join(out_dir, filename[len(base_dir) + 1:])
+      out_file = os.path.join(out_dir, filename[len(base_dir) + 1:] if base_dir else filename)
       out_file = os.path.splitext(out_file)[0] + ".png"
       
       try:
         if convert_shtx_file(filename, out_file):
           print filename
           print " -->", out_file
+          print
       
       except:
         print "Failed to convert", filename

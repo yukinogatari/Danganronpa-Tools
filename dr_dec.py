@@ -76,7 +76,7 @@ def dr_dec(data):
     bit2 = b & 0b01000000
     bit3 = b & 0b00100000
     
-    # Copy data from the output buffer.
+    # Copy data from the output.
     # 1xxyyyyy yyyyyyyy
     # Count  -> x + 4
     # Offset -> y
@@ -92,7 +92,7 @@ def dr_dec(data):
       for i in range(count):
         res.append(res[-offset])
     
-    # Continue copying data from the output buffer.
+    # Continue copying data from the output.
     # 011xxxxx
     # Count  -> x
     # Offset -> reused from above
@@ -125,7 +125,7 @@ def dr_dec(data):
       
       res += bytearray([b] * count)
     
-    # Insert raw bytes from the input stream.
+    # Insert raw bytes from the input.
     # 000xxxxx
     # 001xxxxx xxxxxxxx
     # Count -> x
