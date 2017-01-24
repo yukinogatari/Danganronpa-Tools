@@ -10,8 +10,8 @@ import os
 from util import *
 from drv3_dec import *
 
-SPC_MAGIC   = b"\x43\x50\x53\x2E" # CPS.
-TABLE_MAGIC = b"\x52\x6F\x6F\x74" # Root
+SPC_MAGIC   = "CPS."
+TABLE_MAGIC = "Root"
 
 def spc_ex(filename, out_dir = None):
   out_dir = out_dir or os.path.splitext(filename)[0]

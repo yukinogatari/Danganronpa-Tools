@@ -37,7 +37,29 @@ This directory is then searched for ".rsct", ".wrd", ".stx", and ".srd" files
 to extract data from, which are placed in a new directory with "-ex" appended
 to the name.
 
+--------------------------------------------------------------------------------
+
+#### acb_ex.py
+
+This script will extract the game's audio from its ".acb" and ".awb" files.
+The code for getting audio filenames out of acb files is a little messy,
+so I excluded this step from `drv3_ex_all.py`, meaning you'll have to modify
+the paths it works from yourself if you want to use the script.
+
+Theoretically, this should also work with the other DR games (and, likely,
+other games that use these Criware formats), but the code as it stands is
+hardcoded to use NDRV3-specific paths, so I'm putting it in here.
+
+--------------------------------------------------------------------------------
+
+#### *_ex.py
+
+The extraction scripts can also be run individually to operate on different
+file formats, but I couldn't be bothered to write proper command-line interfaces
+for them, so you're on your own if you want to use them.
+
 ## Acknowledgments
 
 * swizzle.py based on code from [Scarlet](https://github.com/xdanieldzd/Scarlet)
 by [xdanieldzd](https://github.com/xdanieldzd)
+* query_utf.py based on code from [cpk.bms](http://aluigi.altervista.org/bms/cpk.bms)

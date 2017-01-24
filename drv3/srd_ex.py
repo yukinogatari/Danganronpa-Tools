@@ -103,7 +103,9 @@ def read_txr(data, subdata, filename, crop = False):
   filename_base = os.path.splitext(filename)[0]
   img_filename = filename_base + ".srdv"
   
-  
+  # Is there some consistent way to determine whether to use an srdv or srdi file?
+  # If there isn't an srdv file, the srdi file seems to work fine,
+  # but sometimes there are both so ???
   if not os.path.isfile(img_filename):
     img_filename = filename_base + ".srdi"
   
