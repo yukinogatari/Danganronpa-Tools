@@ -43,26 +43,11 @@ def read_srd_item(f):
 ################################################################################
 
 def read_rsf(data, subdata):
-  
-  unk1 = data.read(4)
-  unk2 = data.read(4)
-  unk3 = data.read(4)
-  unk4 = data.read(4)
-  
-  if not unk1 == "\x10\x00\x00\x00":
-    print "???"
-    
-  if not unk2 == "\xFB\xDB\x32\x01":
-    print "???"
-    
-  if not unk3 == "\x41\xDC\x32\x01":
-    print "???"
-    
-  if not unk4 == "\x00\x00\x00\x00":
-    print "???"
-  
+  unk1 = data.read(4) # 10 00 00 00 ???
+  unk2 = data.read(4) # FB DB 32 01 ???
+  unk3 = data.read(4) # 41 DC 32 01 ???
+  unk4 = data.read(4) # 00 00 00 00 ???
   name = data.get_str()
-  
   return name
 
 ################################################################################
@@ -85,7 +70,8 @@ def read_txr(data, subdata, filename, crop = False):
   
   img_data_type, img_data, img_subdata = read_srd_item(subdata)
   
-  img_data.read(4) # 06 05 08 01
+  img_data.read(3) # 06 05 08
+  item_count = img_data.get_u8()
   img_data.read(4) # ???
   img_data.read(4) # ???
   name_offset = img_data.get_u32()
@@ -94,6 +80,16 @@ def read_txr(data, subdata, filename, crop = False):
   img_len   = img_data.get_u32()
   img_data.read(4) # 10 00 00 00
   img_data.read(4) # 00 00 00 00
+  
+  # Do we have a palette?
+  pal_start = None
+  pal_len   = None
+  
+  if item_count == 2:
+    pal_start = img_data.get_u32() & 0x00FFFFFF # idk wtf the top byte is doing
+    pal_len   = img_data.get_u32()
+    img_data.read(4) # 10 00 00 00
+    img_data.read(4) # 00 00 00 00
   
   img_data.seek(name_offset)
   name = img_data.get_str()
@@ -112,6 +108,11 @@ def read_txr(data, subdata, filename, crop = False):
   with open(img_filename, "rb") as f:
     f.seek(img_start)
     img_data = bytearray(f.read(img_len))
+    
+    pal_data = None
+    if not pal_start is None:
+      f.seek(pal_start)
+      pal_data = bytearray(f.read(pal_len))
   
   swizzled = False
   mode     = "RGBA"
@@ -121,9 +122,9 @@ def read_txr(data, subdata, filename, crop = False):
   if not swiz & 1:
     swizzled = True
   
-  if fmt == 0x01:
+  # Raw formats.
+  if fmt in [0x01, 0x02, 0x05, 0x1A]:
     decoder = "raw"
-    arg     = "BGRA"
     
     # Round up to nearest multiple of 8.
     # I'm not 100% sure this is correct, since there's only one image in the
@@ -131,33 +132,61 @@ def read_txr(data, subdata, filename, crop = False):
     height = int(math.ceil(disp_height / 8.0) * 8.0)
     width  = int(math.ceil(disp_width / 8.0) * 8.0)
     
+    # 32-bit BGRA
+    if fmt == 0x01:
+      arg     = "BGRA"
+      bytespp = 4
+    
+    # 16-bit BGR
+    elif fmt == 0x02:
+      mode    = "RGB"
+      arg     = "BGR;16"
+      bytespp = 2
+    
+    # 16-bit BGRA
+    elif fmt == 0x05:
+      # Pillow doesn't support 16-bit raw BGRA, so take as RGBA and fix later.
+      arg     = "RGBA;4B"
+      bytespp = 2
+    
+    # 8-bit indexed
+    elif fmt == 0x1A:
+      arg     = "BGRA"
+      bytespp = 4
+      
+      # I can't seem to get Pillow to cooperate with palettes that have alpha
+      # channels, so I'm just going to be lazy and convert from indexed by hand.
+      old_img_data = img_data
+      img_data = bytearray()
+      
+      for p in old_img_data:
+        img_data.extend(pal_data[p * 4 : p * 4 + 4])
+    
     if swizzled:
-      img_data = PostProcessMortonUnswizzle(img_data, width, height, 4)
+      img_data = PostProcessMortonUnswizzle(img_data, width, height, bytespp)
   
+  # Block-compression, power-of-two formats.
   elif fmt in [0x0F, 0x11, 0x14, 0x16]:
+    decoder = "bcn"
     
     # DXT1
     if fmt == 0x0F:
-      decoder = "bcn"
       arg     = 1
       bytespp = 8
     
     # DXT5
     elif fmt == 0x11:
-      decoder = "bcn"
       arg     = 3
       bytespp = 16
     
     # BC5
     elif fmt == 0x14:
-      decoder = "bcn"
       arg     = 5
       bytespp = 16
     
     # BC4
     elif fmt == 0x16:
       mode    = "L"
-      decoder = "bcn"
       arg     = 4
       bytespp = 8
     
@@ -181,6 +210,11 @@ def read_txr(data, subdata, filename, crop = False):
     b = g.copy()
     a = Image.new("L", (width, height), 0xFF)
     img = Image.merge("RGBA", (r, g, b, a))
+  
+  # Pillow doesn't handle 16-bit BGRA, so we have to swap the R and B channels.
+  if fmt == 0x05:
+    r, g, b, a = img.split()
+    img = Image.merge("RGBA", (b, g, r, a))
   
   if crop and not (disp_width == width and disp_height == height):
     img = img.crop((0, 0, disp_width, disp_height))
@@ -286,6 +320,10 @@ def srd_ex_data(f, filename, out_dir, crop = False):
     
     # Shader stuff?
     elif data_type == "$PSD":
+      pass
+    
+    # ???
+    elif data_type == "$SKL":
       pass
     
     else:
