@@ -41,20 +41,18 @@ def spc_dec(data):
       p += 1
     
     # Read from the buffer.
-    # xxxxxxyy yyyyzzzz
+    # xxxxxxyy yyyyyyyy
     # Count  -> x + 2
-    # Window -> (0x40 - y) * 0x10
-    # Offset -> z (relative to window)
+    # Offset -> y (from the beginning of a 1024-byte sliding window)
     else:
       b = (data[p + 1] << 8) | data[p]
       p += 2
       
       count  = (b >> 10) + 2
-      window = (0x40 - ((b >> 4) & 0b111111)) * 0x10
-      offset = window - (b & 0b1111)
+      offset = b & 0b1111111111
       
       for i in range(count):
-        res.append(res[-offset])
+        res.append(res[offset - 1024])
     
     flag >>= 1
   
