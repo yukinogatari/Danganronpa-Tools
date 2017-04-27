@@ -1,13 +1,17 @@
-﻿################################################################################
+﻿# -*- coding: utf-8 -*-
+
+################################################################################
 # Copyright © 2016-2017 BlackDragonHunt
 # This work is free. You can redistribute it and/or modify it under the
-# terms of the Do What The Fuck You Want To Public License, Version 2,
-# as published by Sam Hocevar. See the COPYING file for more details.
+# terms of the Do What The Fuck You Want To But It's Not My Fault Public
+# License, Version 1, as published by Ben McGinnes. See the COPYING file
+# for more details.
 ################################################################################
 
 import os
 import zlib
 import StringIO
+import struct
 
 class BinaryHelper(object):
   
@@ -25,6 +29,21 @@ class BinaryHelper(object):
   
   def get_u16be(self):
     return to_u16be(self.read(2))
+  
+  def get_s32(self):
+    return to_s32(self.read(4))
+  
+  def get_s16(self):
+    return to_s16(self.read(2))
+  
+  def get_s8(self):
+    return to_s8(self.read(1))
+  
+  def get_s32be(self):
+    return to_s32be(self.read(4))
+  
+  def get_s16be(self):
+    return to_s16be(self.read(2))
   
   def get_bin(self, length):
     return BinaryString(self.read(length))
@@ -53,55 +72,49 @@ class BinaryString(StringIO.StringIO, BinaryHelper):
   pass
 
 def to_u32(b):
-  b = bytearray(b)
-  return (b[3] << 24) + (b[2] << 16) + (b[1] << 8) + b[0]
+  return struct.unpack("<I", b)[0]
 
 def to_u16(b):
-  b = bytearray(b)
-  return (b[1] << 8) + b[0]
+  return struct.unpack("<H", b)[0]
 
 def to_u8(b):
-  b = bytearray(b)
-  return b[0]
+  return struct.unpack("<B", b)[0]
 
 def to_u32be(b):
-  b = bytearray(b)
-  return (b[0] << 24) + (b[1] << 16) + (b[2] << 8) + b[3]
+  return struct.unpack(">I", b)[0]
 
 def to_u16be(b):
-  b = bytearray(b)
-  return (b[0] << 8) + b[1]
+  return struct.unpack(">H", b)[0]
+
+def to_s32(b):
+  return struct.unpack("<i", b)[0]
+
+def to_s16(b):
+  return struct.unpack("<h", b)[0]
+
+def to_s8(b):
+  return struct.unpack("<b", b)[0]
+
+def to_s32be(b):
+  return struct.unpack(">i", b)[0]
+
+def to_s16be(b):
+  return struct.unpack(">h", b)[0]
 
 def from_u32(b):
-  return bytearray([
-    b & 0xFF,
-    (b >> 8)  & 0xFF,
-    (b >> 16) & 0xFF,
-    (b >> 24) & 0xFF,
-  ])
+  return struct.pack("<I", b)
 
 def from_u16(b):
-  return bytearray([
-    b & 0xFF,
-    (b >> 8) & 0xFF,
-  ])
+  return struct.pack("<H", b)
 
 def from_u8(b):
-  return bytearray([b & 0xFF])
+  return struct.pack("<B", b)
 
 def from_u32be(b):
-  return bytearray([
-    (b >> 24) & 0xFF,
-    (b >> 16) & 0xFF,
-    (b >> 8)  & 0xFF,
-    b & 0xFF,
-  ])
+  return struct.pack(">I", b)
 
 def from_u16be(b):
-  return bytearray([
-    (b >> 8) & 0xFF,
-    b & 0xFF,
-  ])
+  return struct.pack(">H", b)
 
 def list_all_files(dirname):
   
