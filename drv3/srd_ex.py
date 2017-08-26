@@ -59,7 +59,7 @@ def read_rsf(data, subdata):
 def power_of_two(x):
   return 2**(x-1).bit_length()
 
-def read_txr(data, subdata, filename, crop = False):
+def read_txr(data, subdata, filename, crop = False, keep_mipmaps = False):
   unk1        = data.get_u32() # 01 00 00 00
   swiz        = data.get_u16()
   disp_width  = data.get_u16()
@@ -67,37 +67,40 @@ def read_txr(data, subdata, filename, crop = False):
   scanline    = data.get_u16()
   fmt         = data.get_u8()
   unk2        = data.get_u8()
-  unk3        = data.get_u16()
-  
-  print "%4d %4d %4d %4d 0x%02X 0x%02X %4d" % (swiz, disp_width, disp_height, scanline, fmt, unk2, unk3),
+  palette     = data.get_u8()
+  palette_id  = data.get_u8()
   
   img_data_type, img_data, img_subdata = read_srd_item(subdata)
   
-  img_data.read(3) # 06 05 08
-  item_count = img_data.get_u8()
+  img_data.read(2) # 06 05
+  unk5 = img_data.get_u8() # ???
+  mipmap_count = img_data.get_u8()
   img_data.read(4) # ???
   img_data.read(4) # ???
   name_offset = img_data.get_u32()
   
-  img_start = img_data.get_u32() & 0x00FFFFFF # idk wtf the top byte is doing
-  img_len   = img_data.get_u32()
-  img_data.read(4) # 10 00 00 00
-  img_data.read(4) # 00 00 00 00
+  mipmaps = []
+  for i in range(mipmap_count):
+    mipmap_start = img_data.get_u32() & 0x0FFFFFFF # idk wtf the top byte is doing
+    mipmap_len   = img_data.get_u32()
+    mipmap_unk1  = img_data.get_u32() # XX 00 00 00
+    mipmap_unk2  = img_data.get_u32() # 00 00 00 00
+    
+    mipmaps.append((mipmap_start, mipmap_len, mipmap_unk1, mipmap_unk2))
   
   # Do we have a palette?
   pal_start = None
   pal_len   = None
   
-  if item_count == 2:
-    pal_start = img_data.get_u32() & 0x00FFFFFF # idk wtf the top byte is doing
-    pal_len   = img_data.get_u32()
-    img_data.read(4) # 10 00 00 00
-    img_data.read(4) # 00 00 00 00
+  # FIXME: ???
+  if palette == 0x01:
+    pal_start, pal_len, _, _ = mipmaps.pop(palette_id)
   
   img_data.seek(name_offset)
-  name = img_data.get_str()
+  name = img_data.get_str(encoding = "CP932")
   
-  print "0x%08X 0x%08X" % (img_start, img_len), name
+  print "%4d %4d %2d 0x%02X 0x%02X %3d %3d %3d" % (swiz, scanline, mipmap_count, fmt, unk2, palette, palette_id, unk5), name.encode("UTF-8")
+  # print "0x%02X %2d Mipmaps %3d %3d" % (fmt, mipmap_count, palette, palette_id), name.encode("UTF-8")
   
   filename_base = os.path.splitext(filename)[0]
   img_filename = filename_base + ".srdv"
@@ -108,121 +111,151 @@ def read_txr(data, subdata, filename, crop = False):
   if not os.path.isfile(img_filename):
     img_filename = filename_base + ".srdi"
   
-  with open(img_filename, "rb") as f:
-    f.seek(img_start)
-    img_data = bytearray(f.read(img_len))
-    
-    pal_data = None
-    if not pal_start is None:
-      f.seek(pal_start)
-      pal_data = bytearray(f.read(pal_len))
+  images = []
   
-  swizzled = False
-  mode     = "RGBA"
-  decoder  = None
-  arg      = None
+  if not keep_mipmaps:
+    mipmaps = mipmaps[:1]
   
-  if not swiz & 1:
-    swizzled = True
-  
-  # Raw formats.
-  if fmt in [0x01, 0x02, 0x05, 0x1A]:
-    decoder = "raw"
+  for i in range(len(mipmaps)):
     
-    # Round up to nearest multiple of 8.
-    # I'm not 100% sure this is correct, since there's only one image in the
-    # entire game that isn't a multiple of 8, and doing this happens to fix it.
-    height = int(math.ceil(disp_height / 8.0) * 8.0)
-    width  = int(math.ceil(disp_width / 8.0) * 8.0)
+    mipmap_name = os.path.splitext(name)[0]
+    if len(mipmaps) > 1:
+      mipmap_name += "_%dx%d" % (disp_width, disp_height)
+    mipmap_name += ".png"
     
-    # 32-bit BGRA
-    if fmt == 0x01:
-      arg     = "BGRA"
-      bytespp = 4
-    
-    # 16-bit BGR
-    elif fmt == 0x02:
-      mode    = "RGB"
-      arg     = "BGR;16"
-      bytespp = 2
-    
-    # 16-bit BGRA
-    elif fmt == 0x05:
-      # Pillow doesn't support 16-bit raw BGRA, so take as RGBA and fix later.
-      arg     = "RGBA;4B"
-      bytespp = 2
-    
-    # 8-bit indexed
-    elif fmt == 0x1A:
-      arg     = "BGRA"
-      bytespp = 4
+    with open(img_filename, "rb") as f:
+      mipmap_start, mipmap_len, mipmap_unk1, mipmap_unk2 = mipmaps[i]
+      f.seek(mipmap_start)
+      img_data = bytearray(f.read(mipmap_len))
+      print "     %4d %4d 0x%08X 0x%08X" % (disp_width, disp_height, mipmap_start, mipmap_len)
       
-      # I can't seem to get Pillow to cooperate with palettes that have alpha
-      # channels, so I'm just going to be lazy and convert from indexed by hand.
-      old_img_data = img_data
-      img_data = bytearray()
+      pal_data = None
+      if not pal_start is None:
+        f.seek(pal_start)
+        pal_data = bytearray(f.read(pal_len))
+    
+    swizzled = False
+    mode     = "RGBA"
+    decoder  = None
+    arg      = None
+    
+    if not swiz & 1:
+      swizzled = True
+    
+    # Raw formats.
+    if fmt in [0x01, 0x02, 0x05, 0x1A]:
+      decoder = "raw"
       
-      for p in old_img_data:
-        img_data.extend(pal_data[p * 4 : p * 4 + 4])
+      # Round up to nearest multiple of 8.
+      # I'm not 100% sure this is correct, since there's only one image in the
+      # entire game that isn't a multiple of 8, and doing this happens to fix it.
+      height = int(math.ceil(disp_height / 8.0) * 8.0)
+      width  = int(math.ceil(disp_width / 8.0) * 8.0)
+      
+      # 32-bit BGRA
+      if fmt == 0x01:
+        arg     = "BGRA"
+        bytespp = 4
+      
+      # 16-bit BGR
+      elif fmt == 0x02:
+        mode    = "RGB"
+        arg     = "BGR;16"
+        bytespp = 2
+      
+      # 16-bit BGRA
+      elif fmt == 0x05:
+        # Pillow doesn't support 16-bit raw BGRA, so take as RGBA and fix later.
+        arg     = "RGBA;4B"
+        bytespp = 2
+      
+      # 8-bit indexed
+      elif fmt == 0x1A:
+        arg     = "BGRA"
+        bytespp = 4
+        
+        # I can't seem to get Pillow to cooperate with palettes that have alpha
+        # channels, so I'm just going to be lazy and convert from indexed by hand.
+        old_img_data = img_data
+        img_data = bytearray()
+        
+        for p in old_img_data:
+          img_data.extend(pal_data[p * 4 : p * 4 + 4])
+      
+      if swizzled:
+        img_data = PostProcessMortonUnswizzle(img_data, width, height, bytespp)
     
-    if swizzled:
-      img_data = PostProcessMortonUnswizzle(img_data, width, height, bytespp)
-  
-  # Block-compression, power-of-two formats.
-  elif fmt in [0x0F, 0x11, 0x14, 0x16]:
-    decoder = "bcn"
+    # Block-compression, power-of-two formats.
+    elif fmt in [0x0F, 0x11, 0x14, 0x16, 0x1C]:
+      decoder = "bcn"
+      
+      # DXT1
+      if fmt == 0x0F:
+        arg     = 1
+        bytespp = 8
+      
+      # DXT5
+      elif fmt == 0x11:
+        arg     = 3
+        bytespp = 16
+      
+      # BC5
+      elif fmt == 0x14:
+        arg     = 5
+        bytespp = 16
+      
+      # BC4
+      elif fmt == 0x16:
+        mode    = "L"
+        arg     = 4
+        bytespp = 8
+      
+      # BC7 / DX10
+      elif fmt == 0x1C:
+        arg = 7
+        bytespp = 16
+      
+      # FIXME: ???
+      if unk5 == 0x08:
+        # Round up to nearest power of two.
+        width = power_of_two(disp_width)
+        height = power_of_two(disp_height)
+      
+      else:
+        width = disp_width
+        height = disp_height
+      
+      if swizzled and width >= 4 and height >= 4:
+        img_data = PostProcessMortonUnswizzle(img_data, width / 4, height / 4, bytespp)
     
-    # DXT1
-    if fmt == 0x0F:
-      arg     = 1
-      bytespp = 8
+    else:
+      print "!!!", hex(fmt), "!!!"
+      return []
     
-    # DXT5
-    elif fmt == 0x11:
-      arg     = 3
-      bytespp = 16
+    img = Image.frombytes(mode, (width, height), bytes(img_data), decoder, arg)
     
-    # BC5
-    elif fmt == 0x14:
-      arg     = 5
-      bytespp = 16
+    # The game seems to handle BC5 differently than Pillow.
+    # I'm not 100% sure this is right, but it seems to be based on what I've seen?
+    if fmt == 0x14:
+      r, g, b, a = img.split()
+      b = g.copy()
+      a = Image.new("L", (width, height), 0xFF)
+      img = Image.merge("RGBA", (r, g, b, a))
     
-    # BC4
-    elif fmt == 0x16:
-      mode    = "L"
-      arg     = 4
-      bytespp = 8
+    # Pillow doesn't handle 16-bit BGRA, so we have to swap the R and B channels.
+    if fmt == 0x05:
+      r, g, b, a = img.split()
+      img = Image.merge("RGBA", (b, g, r, a))
     
-    # Round up to nearest power of two.
-    width = power_of_two(disp_width)
-    height = power_of_two(disp_height)
+    if crop and not (disp_width == width and disp_height == height):
+      img = img.crop((0, 0, disp_width, disp_height))
     
-    if swizzled and width >= 4 and height >= 4:
-      img_data = PostProcessMortonUnswizzle(img_data, width / 4, height / 4, bytespp)
+    images.append((mipmap_name, img))
+    
+    disp_width = max(1, disp_width / 2)
+    disp_height = max(1, disp_height / 2)
   
-  else:
-    print "!!!", hex(fmt), "!!!"
-    return None, None
-  
-  img = Image.frombytes(mode, (width, height), bytes(img_data), decoder, arg)
-  
-  # The game seems to handle BC5 differently than Pillow.
-  # I'm not 100% sure this is right, but it seems to be based on what I've seen?
-  if fmt == 0x14:
-    r, g, b, a = img.split()
-    b = g.copy()
-    a = Image.new("L", (width, height), 0xFF)
-    img = Image.merge("RGBA", (r, g, b, a))
-  
-  # Pillow doesn't handle 16-bit BGRA, so we have to swap the R and B channels.
-  if fmt == 0x05:
-    r, g, b, a = img.split()
-    img = Image.merge("RGBA", (b, g, r, a))
-  
-  if crop and not (disp_width == width and disp_height == height):
-    img = img.crop((0, 0, disp_width, disp_height))
-  
-  return name, img
+  return images
 
 def read_txi(data, subdata, filename):
   return
@@ -263,19 +296,21 @@ def srd_ex_data(f, filename, out_dir, crop = False):
     
     # Texture (srdv file)?
     elif data_type == "$TXR":
-      name, img = read_txr(data, subdata, filename, crop)
+      images = read_txr(data, subdata, filename, crop)
       
-      if not name or not img:
-        continue
-      
-      out_file = os.path.splitext(os.path.join(subdir, name))[0]
-      
-      try:
-        os.makedirs(subdir)
-      except:
-        pass
-      
-      img.save(out_file + ".png")
+      for name, img in images:
+        if not name or not img:
+          continue
+        
+        # out_file = os.path.splitext(os.path.join(subdir, name))[0]
+        out_file = os.path.join(subdir, name)
+        
+        try:
+          os.makedirs(subdir)
+        except:
+          pass
+        
+        img.save(out_file)
     
     # Texture information?
     elif data_type == "$TXI":
@@ -338,10 +373,17 @@ if __name__ == "__main__":
     "dec/partition_data_vita",
     "dec/partition_resident_vita",
     "dec/partition_patch101_vita",
+    "dec/partition_patch102_vita",
     
     # Demo data
     "dec/partition_data_vita_taiken_ja",
     "dec/partition_resident_vita_taiken_ja",
+    
+    # PC demo data
+    "dec/partition_data_win_demo",
+    "dec/partition_data_win_demo_jp",
+    "dec/partition_data_win_demo_us",
+    "dec/partition_resident_win_demo",
   ]
   
   for dirname in dirs:

@@ -81,6 +81,10 @@ def guess_ext(data):
     return ".at9"
   elif data[:4] == "VAGp":
     return ".vag"
+  elif data[:4] == "HCA\0":
+    return ".hca"
+  elif data[:2] == "\x80\x00":
+    return ".adx"
   else:
     return ".dat"
 

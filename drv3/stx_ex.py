@@ -59,6 +59,7 @@ if __name__ == "__main__":
     "dec/partition_data_vita",
     "dec/partition_resident_vita",
     "dec/partition_patch101_vita",
+    "dec/partition_patch102_vita",
     
     # Demo data
     "dec/partition_data_vita_taiken_ja",

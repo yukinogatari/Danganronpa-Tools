@@ -113,6 +113,7 @@ if __name__ == "__main__":
     "partition_data_vita",
     "partition_resident_vita",
     "partition_patch101_vita",
+    "partition_patch102_vita",
     
     # Demo data
     "partition_data_vita_taiken_ja",
