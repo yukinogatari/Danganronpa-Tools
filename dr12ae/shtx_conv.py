@@ -53,7 +53,7 @@ def convert_shtx(data):
     return
   
   if data[:5] == SHTXF_MAGIC:
-    img = convert_shtx_8bit(data[5:])
+    img = convert_shtx_8bit(data[6:])
   
   else:
     img = convert_shtx_4bit(data[4:])
