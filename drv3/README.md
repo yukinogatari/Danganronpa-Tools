@@ -1,4 +1,4 @@
-A set of scripts for working with the data in New Danganronpa V3 for the PS Vita.
+A set of scripts for working with the data in Danganronpa V3 for the PS Vita and PC.
 
 ## Dependencies
 
@@ -11,7 +11,7 @@ A set of scripts for working with the data in New Danganronpa V3 for the PS Vita
 
 #### drv3_ex_all.py
 
-An all-in-one extractor for a bunch of the data in New Danganronpa V3.
+An all-in-one extractor for a bunch of the data in Danganronpa V3.
 
 #### Usage
 
