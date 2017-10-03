@@ -14,7 +14,7 @@ from PyQt4.QtGui import QImage, qRgba
 
 from util import to_u16, list_all_files
 
-SHTX_MAGIC   = "SHTX"
+SHTX_MAGIC  = "SHTX"
 SHTXF_MAGIC = "SHTXF"
 
 def convert_shtx_file(filename, out_file = None):
@@ -52,6 +52,8 @@ def convert_shtx(data):
   if not data[:4] == SHTX_MAGIC:
     return
   
+  # Vita = "SHTXFS", PC = "SHTXFs", otherwise data seems to be the same.
+  # Handle both variants using the common prefix.
   if data[:5] == SHTXF_MAGIC:
     img = convert_shtx_8bit(data[6:])
   
