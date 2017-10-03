@@ -83,11 +83,6 @@ if __name__ == "__main__":
       ex_dir   = out_dir + "-ex" + ex_dir[len(out_dir):]
       txt_file = os.path.join(ex_dir, os.path.splitext(basename)[0] + ".txt")
       
-      try:
-        os.makedirs(ex_dir)
-      except:
-        pass
-      
       print
       print "Extracting", filename
       print

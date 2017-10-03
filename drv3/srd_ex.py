@@ -146,12 +146,6 @@ def read_txr(data, subdata, filename, crop = False, keep_mipmaps = False):
     if fmt in [0x01, 0x02, 0x05, 0x1A]:
       decoder = "raw"
       
-      # Round up to nearest multiple of 8.
-      # I'm not 100% sure this is correct, since there's only one image in the
-      # entire game that isn't a multiple of 8, and doing this happens to fix it.
-      height = int(math.ceil(disp_height / 8.0) * 8.0)
-      width  = int(math.ceil(disp_width / 8.0) * 8.0)
-      
       # 32-bit BGRA
       if fmt == 0x01:
         arg     = "BGRA"
@@ -181,6 +175,9 @@ def read_txr(data, subdata, filename, crop = False, keep_mipmaps = False):
         
         for p in old_img_data:
           img_data.extend(pal_data[p * 4 : p * 4 + 4])
+      
+      width = scanline / bytespp
+      height = disp_height
       
       if swizzled:
         img_data = PostProcessMortonUnswizzle(img_data, width, height, bytespp)

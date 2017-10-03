@@ -20,6 +20,13 @@ def wrd_ex(filename, out_file = None):
   if not strs:# and not cmds:
     return
   
+  out_dir = os.path.dirname(out_file)
+  
+  try:
+    os.makedirs(out_dir)
+  except:
+    pass
+  
   with open(out_file, "wb") as f:
     if strs:
       # f.write("########## Strings ##########\n\n")

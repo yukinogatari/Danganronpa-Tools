@@ -22,6 +22,13 @@ def rsct_ex(filename, out_file = None):
   if not strs:
     return
   
+  out_dir = os.path.dirname(out_file)
+  
+  try:
+    os.makedirs(out_dir)
+  except:
+    pass
+  
   with open(out_file, "wb") as f:
     for i, string in enumerate(strs):
       f.write(string.encode("UTF-8"))

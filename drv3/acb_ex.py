@@ -46,6 +46,9 @@ if __name__ == "__main__":
     
     # PC demo
     "partition_resident_win_demo",
+    
+    PC retail
+    "partition_resident_win",
   ]
   
   for base_dir in dirs:
