@@ -15,7 +15,7 @@ from PyQt4.QtGui import QImage, qRgba
 from util import to_u16, list_all_files
 
 SHTX_MAGIC   = "SHTX"
-SHTXFS_MAGIC = "SHTXFS"
+SHTXF_MAGIC = "SHTXF"
 
 def convert_shtx_file(filename, out_file = None):
   
@@ -52,8 +52,8 @@ def convert_shtx(data):
   if not data[:4] == SHTX_MAGIC:
     return
   
-  if data[:6] == SHTXFS_MAGIC:
-    img = convert_shtx_8bit(data[6:])
+  if data[:5] == SHTXF_MAGIC:
+    img = convert_shtx_8bit(data[5:])
   
   else:
     img = convert_shtx_4bit(data[4:])
